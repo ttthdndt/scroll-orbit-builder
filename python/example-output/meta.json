@@ -1,0 +1,11 @@
+{
+  "columns": 8,
+  "rows": 8,
+  "frame_width": 400,
+  "frame_height": 400,
+  "frame_count": 60,
+  "sheet_width": 3200,
+  "sheet_height": 3200,
+  "container_id": "scroll-orbit-6e3e1b34",
+  "sprite_url": "./sprite.jpg"
+}
