@@ -12,6 +12,17 @@ export interface OrbitCanvasProps {
   title?: string;
   subtitle?: string;
   className?: string;
+  /**
+   * When true, renders as a fixed-height, self-scrolling box: the
+   * rotation responds to scrolling *inside* this element instead of
+   * the page scroll. Use this for in-app previews so the demo doesn't
+   * hijack the whole page's scroll. When false (default), it behaves
+   * like the real exported snippet: a tall pinned section driven by
+   * page scroll.
+   */
+  embedded?: boolean;
+  /** Height in px of the box when `embedded` is true. Default 480. */
+  height?: number;
 }
 
 /**
@@ -29,6 +40,8 @@ export default function OrbitCanvas({
   title,
   subtitle,
   className,
+  embedded = false,
+  height = 480,
 }: OrbitCanvasProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -110,9 +123,15 @@ export default function OrbitCanvas({
       ticking = true;
       requestAnimationFrame(() => {
         if (!root) return;
-        const rect = root.getBoundingClientRect();
-        const scrollable = rect.height - window.innerHeight;
-        let progress = scrollable > 0 ? -rect.top / scrollable : 0;
+        let progress: number;
+        if (embedded) {
+          const scrollable = root.scrollHeight - root.clientHeight;
+          progress = scrollable > 0 ? root.scrollTop / scrollable : 0;
+        } else {
+          const rect = root.getBoundingClientRect();
+          const scrollable = rect.height - window.innerHeight;
+          progress = scrollable > 0 ? -rect.top / scrollable : 0;
+        }
         progress = Math.min(1, Math.max(0, progress));
         lastProgress = progress;
         render(progress);
@@ -120,89 +139,124 @@ export default function OrbitCanvas({
       });
     }
 
-    window.addEventListener("scroll", onScroll, { passive: true });
+    if (embedded) {
+      root.addEventListener("scroll", onScroll, { passive: true });
+    } else {
+      window.addEventListener("scroll", onScroll, { passive: true });
+    }
     window.addEventListener("resize", onScroll);
     onScroll();
 
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      if (embedded) {
+        root.removeEventListener("scroll", onScroll);
+      } else {
+        window.removeEventListener("scroll", onScroll);
+      }
       window.removeEventListener("resize", onScroll);
     };
-  }, [spriteUrl, meta, scrollVh]);
+  }, [spriteUrl, meta, scrollVh, embedded]);
 
-  return (
-    <div ref={rootRef} className={className} style={{ position: "relative", height: `${scrollVh}vh` }}>
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          height: "100vh",
-          overflow: "hidden",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: bgColor,
-        }}
-      >
-        <canvas aria-hidden style={{ width: "100%", height: "100%", display: "block" }} ref={canvasRef} />
-        {(title || subtitle) && (
-          <div
-            ref={captionRef}
-            style={{
-              position: "absolute",
-              top: "8%",
-              left: 0,
-              right: 0,
-              textAlign: "center",
-              color: textColor,
-              transition: "opacity 0.4s ease",
-              pointerEvents: "none",
-              padding: "0 24px",
-            }}
-          >
-            {title && (
-              <h2
-                style={{
-                  fontSize: "clamp(22px, 4vw, 42px)",
-                  fontWeight: 600,
-                  letterSpacing: "0.02em",
-                  margin: "0 0 8px",
-                }}
-              >
-                {title}
-              </h2>
-            )}
-            {subtitle && (
-              <p
-                style={{
-                  fontSize: "clamp(13px, 1.4vw, 17px)",
-                  opacity: 0.75,
-                  margin: 0,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {subtitle}
-              </p>
-            )}
-          </div>
-        )}
+  const stickyHeight = embedded ? `${height}px` : "100vh";
+
+  const stage = (
+    <div
+      style={{
+        position: "sticky",
+        top: 0,
+        height: stickyHeight,
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: bgColor,
+      }}
+    >
+      <canvas aria-hidden style={{ width: "100%", height: "100%", display: "block" }} ref={canvasRef} />
+      {(title || subtitle) && (
         <div
+          ref={captionRef}
           style={{
             position: "absolute",
-            bottom: "6%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "min(280px, 60%)",
-            height: 2,
-            background: "rgba(128,128,128,0.3)",
-            borderRadius: 2,
-            overflow: "hidden",
+            top: "8%",
+            left: 0,
+            right: 0,
+            textAlign: "center",
+            color: textColor,
+            transition: "opacity 0.4s ease",
+            pointerEvents: "none",
+            padding: "0 24px",
           }}
         >
-          <div ref={progressRef} style={{ height: "100%", width: "0%", background: textColor, borderRadius: 2 }} />
+          {title && (
+            <h2
+              style={{
+                fontSize: "clamp(22px, 4vw, 42px)",
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+                margin: "0 0 8px",
+              }}
+            >
+              {title}
+            </h2>
+          )}
+          {subtitle && (
+            <p
+              style={{
+                fontSize: "clamp(13px, 1.4vw, 17px)",
+                opacity: 0.75,
+                margin: 0,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              {subtitle}
+            </p>
+          )}
         </div>
+      )}
+      <div
+        style={{
+          position: "absolute",
+          bottom: "6%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "min(280px, 60%)",
+          height: 2,
+          background: "rgba(128,128,128,0.3)",
+          borderRadius: 2,
+          overflow: "hidden",
+        }}
+      >
+        <div ref={progressRef} style={{ height: "100%", width: "0%", background: textColor, borderRadius: 2 }} />
       </div>
+    </div>
+  );
+
+  if (embedded) {
+    // Self-scrolling box: scrolling *inside* this element drives the
+    // rotation, so it doesn't take over the page's scroll.
+    return (
+      <div
+        ref={rootRef}
+        className={className}
+        style={{
+          position: "relative",
+          height: `${height}px`,
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+        }}
+      >
+        <div style={{ height: `${height * (scrollVh / 100)}px` }}>{stage}</div>
+      </div>
+    );
+  }
+
+  // Page-pinned section: mirrors the exported snippet's real behaviour,
+  // driven by the page's own scroll position.
+  return (
+    <div ref={rootRef} className={className} style={{ position: "relative", height: `${scrollVh}vh` }}>
+      {stage}
     </div>
   );
 }

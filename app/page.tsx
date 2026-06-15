@@ -295,8 +295,14 @@ export default function Home() {
                   textColor={textColor}
                   title={title}
                   subtitle={subtitle}
+                  embedded
+                  height={480}
                 />
               </div>
+              <p className="hint" style={{ marginTop: 8 }}>
+                Scroll inside the box above to preview the rotation. On your site this
+                effect is driven by the page's own scroll instead.
+              </p>
 
               <div className="preview-meta">
                 <span>
